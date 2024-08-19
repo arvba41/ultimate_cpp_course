@@ -7,54 +7,65 @@ void print_header();
 
 int main()
 {   
-    float firt_price, last_price, tax_percent, stride;
+    float first_price, last_price, tax_percent, stride;
 
     cout << "INPUT PART" << endl;
     cout << "==========" << endl;
-    cout << "Enter firt price: ";
-    cin >> firt_price;
-    if (firt_price < 0)
+    cout << "Enter first price: ";
+    cin >> first_price;
+    if (first_price < 0)
     {
-        cout << "ERROR: Firt price must be greater or equal than 0" << endl;
+        cout << "ERROR: first price must be greater or equal than 0" << endl;
         return 1;
     }
     cout << "Enter last price: ";
     cin >> last_price;
-    if (last_price < firt_price)
+    if (last_price < first_price)
     {
-        cout << "ERROR: Last price must be greater or equal than firt price" << endl;
+        cout << "ERROR: Last price must be greater or equal than first price" << endl;
         return 1;
     }
     cout << "Enter stride: ";
     cin >> stride;
-    cout << stride << endl;
-    if (stride < 0.01)
+    if (stride < 0.0099) // 0.01 is the minimum value for the stride but using 0.0099 to avoid floating point errors
     {
         cout << "ERROR: Stride must be greater than or equal to 0.01" << endl;
         return 1;
     }
     cout << "Enter tax percent: ";
     cin >> tax_percent;
-    if (tax_percent < 0)
+    if(tax_percent < 0)
     {
         cout << "ERROR: Tax percent must be greater or equal than 0" << endl;
         return 1;
     }
 
     // Printing the header 
+    cout << "OUTPUT PART" << endl;
+    cout << "===========" << endl;
     print_header();
 
     // Printing the table
-    float price = firt_price;
-    float tax = 0;
-    float price_with_tax = 0;
-    for (price; price <= last_price; price += stride)
+    float price = first_price;
+    float tax, price_with_tax;
+    int total_entries = (int)((last_price - first_price) / stride + 1);
+    if (total_entries > 100)
+    {
+        cout << "WARNING, unreasonable values: Total entries are greater than 100. Are you sure you want to continue? ([y]/n): ";
+        char choice;
+        cin >> choice;
+        if (choice == 'n')
+        {
+            return 0;
+        }
+    }
+    for (int i = 0; i <= total_entries; i++)
     {
         tax = price * tax_percent / 100;
         price_with_tax = price + tax;
         cout << setfill(' ') << fixed << setprecision(2) << setw(10) << price << setw(10) << tax << setw(20) << price_with_tax << endl;
+        price = first_price + i * stride;
     }
-
 
 }
 
