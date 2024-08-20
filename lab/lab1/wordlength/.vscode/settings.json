@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "*.py": "python",
+        "ostream": "cpp",
+        "fstream": "cpp",
+        "*.tcc": "cpp"
+    }
+}
