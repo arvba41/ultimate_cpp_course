@@ -6,7 +6,7 @@ import json
 
 # %%
 # load the data
-with open("build/simple_lpf.json", "r") as file:
+with open("build/pmsm_simulation.json", "r") as file:
     data = json.load(file)
 
 # %%

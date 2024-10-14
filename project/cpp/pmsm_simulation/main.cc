@@ -156,11 +156,17 @@ int main() {
   pmsm.np = 3;         // pole pairs
   pmsm.J = 0.25;       // inertia
 
+  const double Vd_pk = 100; // peak value of the d-axis voltage
+  const double tset = 0.1;  // time to set the input
+  const double tstart = 0;  // simulation start time
+  const double tend = 1;    // simulation end time
+  const double dt = 10E-6;  // simulation time step
+
   /* ---------------------------------------------------- */
   /*! simulation */
   /* ---------------------------------------------------- */
-  pmsm.set_time(0, 1, 100E-6);     // set time vector
-  pmsm.set_inputs(1, 200, 0.2);    // set input vector
+  pmsm.set_time(tstart, tend, dt); // set time vector
+  pmsm.set_inputs(1, Vd_pk, tset); // set input vector
   VectorXd x0 = VectorXd::Zero(3); // initial state vector
   pmsm.simulate(x0);               // simulate the system
   /* ---------------------------------------------------- */
