@@ -4,6 +4,8 @@
 #include <nlohmann/json.hpp>
 #include <string>
 
+#include "timer.h" // Timer class
+
 // #include <valarray>
 
 using namespace Eigen;
@@ -168,7 +170,17 @@ int main() {
   pmsm.set_time(tstart, tend, dt); // set time vector
   pmsm.set_inputs(1, Vd_pk, tset); // set input vector
   VectorXd x0 = VectorXd::Zero(3); // initial state vector
-  pmsm.simulate(x0);               // simulate the system
+
+  Timer timer; // initialize timer
+
+  timer.tic();   // start timer
+  timer.reset(); // start timer
+
+  pmsm.simulate(x0); // simulate the system
+
+  timer.toc(); // stop timer
+
+  std::cout << "Elapsed time: " << timer.elapsed() << " ms" << std::endl;
   /* ---------------------------------------------------- */
 
   /* ---------------------------------------------------- */
