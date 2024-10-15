@@ -6,22 +6,22 @@ import json
 
 import time
 
-# %%
-# load the data
-with open("build/pmsm_simulation.json", "r") as file:
-    data = json.load(file)
+# # %%
+# # load the data
+# with open("../results/pmsm_simulation.json", "r") as file:
+#     data = json.load(file)
 
-# %%
-# extract the data
-t = np.array(data["t"])  # time
+# # %%
+# # extract the data
+# t = np.array(data["t"])  # time
 
-u = {}  # input
-for uu in data["U"]:
-    u[uu] = np.array(data["U"][uu])
+# u = {}  # input
+# for uu in data["U"]:
+#     u[uu] = np.array(data["U"][uu])
 
-x = {}  # state
-for xx in data["X"]:
-    x[xx] = np.array(data["X"][xx])
+# x = {}  # state
+# for xx in data["X"]:
+#     x[xx] = np.array(data["X"][xx])
 
 # %%
 # Simulating the PMSM model in python
@@ -121,46 +121,62 @@ print(f"Simulation time: {tsim_end - tsim_start:.2f} s")
 print("*" * 50)
 
 # %%
-# loading the simulation results from matlab
-with open("matlab_results.json", "r") as file:
-    data_matlab = json.load(file)
+# save the simulation results
+data = {
+    "t": pmsm.t,
+    "u": pmsm.u,
+    "x": pmsm.x,
+}
 
-t_matlab = np.array(data_matlab["t"])  # time
-u_matlab = np.array(data_matlab["u"])  # input
-x_matlab = np.array(data_matlab["x"])  # state
+with open("python_results.npy", "wb") as file:
+    np.save(file, data)
 
-# %%
-# plot the simulation results
+# copy the results to the matlab folder
+import shutil
 
-fig, ax = plt.subplots(
-    3, 2, clear=True, num="Simulation Results", layout="constrained", sharex=True
-)
+shutil.copy("python_results.npy", "../results/python_results.npy")
 
-unames = ["$v_d$", "$v_q$", "$T_l$"]
-xnames = ["$i_d$", "$i_q$", "$\\omega$"]
+# # %%
+# # loading the simulation results from matlab
+# with open("matlab_results.json", "r") as file:
+#     data_matlab = json.load(file)
 
-for ii, (uu, xx) in enumerate(zip(u, x)):
-    ax[ii, 0].plot(t, u[uu])
-    ax[ii, 0].set_ylabel(unames[ii])
-    ax[ii, 0].grid(True)
-    # ax[ii, 0].legend()
+# t_matlab = np.array(data_matlab["t"])  # time
+# u_matlab = np.array(data_matlab["u"])  # input
+# x_matlab = np.array(data_matlab["x"])  # state
 
-    ax[ii, 1].plot(t, x[xx])
-    ax[ii, 1].set_ylabel(xnames[ii])
-    ax[ii, 1].grid(True)
-    # ax[ii, 1].legend()
+# # %%
+# # plot the simulation results
 
-for ii, (uu, xx) in enumerate(zip(pmsm.u, pmsm.x)):
-    ax[ii, 0].plot(pmsm.t, uu, linestyle="--")
-    ax[ii, 1].plot(pmsm.t, xx, linestyle="--")
+# fig, ax = plt.subplots(
+#     3, 2, clear=True, num="Simulation Results", layout="constrained", sharex=True
+# )
 
-for ii, (uu, xx) in enumerate(zip(u_matlab, x_matlab)):
-    ax[ii, 0].plot(t_matlab, uu, linestyle=":")
-    ax[ii, 1].plot(t_matlab, xx, linestyle=":")
+# unames = ["$v_d$", "$v_q$", "$T_l$"]
+# xnames = ["$i_d$", "$i_q$", "$\\omega$"]
 
-ax[2, 0].set_xlabel("$t$ [s]")
-ax[2, 1].set_xlabel("$t$ [s]")
-fig.align_ylabels()
+# for ii, (uu, xx) in enumerate(zip(u, x)):
+#     ax[ii, 0].plot(t, u[uu])
+#     ax[ii, 0].set_ylabel(unames[ii])
+#     ax[ii, 0].grid(True)
+#     # ax[ii, 0].legend()
 
-# %%
-plt.show()
+#     ax[ii, 1].plot(t, x[xx])
+#     ax[ii, 1].set_ylabel(xnames[ii])
+#     ax[ii, 1].grid(True)
+#     # ax[ii, 1].legend()
+
+# for ii, (uu, xx) in enumerate(zip(pmsm.u, pmsm.x)):
+#     ax[ii, 0].plot(pmsm.t, uu, linestyle="--")
+#     ax[ii, 1].plot(pmsm.t, xx, linestyle="--")
+
+# for ii, (uu, xx) in enumerate(zip(u_matlab, x_matlab)):
+#     ax[ii, 0].plot(t_matlab, uu, linestyle=":")
+#     ax[ii, 1].plot(t_matlab, xx, linestyle=":")
+
+# ax[2, 0].set_xlabel("$t$ [s]")
+# ax[2, 1].set_xlabel("$t$ [s]")
+# fig.align_ylabels()
+
+# # %%
+# plt.show()
