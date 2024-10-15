@@ -121,6 +121,15 @@ print(f"Simulation time: {tsim_end - tsim_start:.2f} s")
 print("*" * 50)
 
 # %%
+# loading the simulation results from matlab
+with open("matlab_results.json", "r") as file:
+    data_matlab = json.load(file)
+
+t_matlab = np.array(data_matlab["t"])  # time
+u_matlab = np.array(data_matlab["u"])  # input
+x_matlab = np.array(data_matlab["x"])  # state
+
+# %%
 # plot the simulation results
 
 fig, ax = plt.subplots(
@@ -131,19 +140,23 @@ unames = ["$v_d$", "$v_q$", "$T_l$"]
 xnames = ["$i_d$", "$i_q$", "$\\omega$"]
 
 for ii, (uu, xx) in enumerate(zip(u, x)):
-    ax[ii, 0].plot(t, u[uu], label=unames[ii])
+    ax[ii, 0].plot(t, u[uu])
     ax[ii, 0].set_ylabel(unames[ii])
     ax[ii, 0].grid(True)
     # ax[ii, 0].legend()
 
-    ax[ii, 1].plot(t, x[xx], label=xnames[ii])
+    ax[ii, 1].plot(t, x[xx])
     ax[ii, 1].set_ylabel(xnames[ii])
     ax[ii, 1].grid(True)
     # ax[ii, 1].legend()
 
 for ii, (uu, xx) in enumerate(zip(pmsm.u, pmsm.x)):
-    ax[ii, 0].plot(pmsm.t, uu, label=unames[ii], linestyle="--")
-    ax[ii, 1].plot(pmsm.t, xx, label=xnames[ii], linestyle="--")
+    ax[ii, 0].plot(pmsm.t, uu, linestyle="--")
+    ax[ii, 1].plot(pmsm.t, xx, linestyle="--")
+
+for ii, (uu, xx) in enumerate(zip(u_matlab, x_matlab)):
+    ax[ii, 0].plot(t_matlab, uu, linestyle=":")
+    ax[ii, 1].plot(t_matlab, xx, linestyle=":")
 
 ax[2, 0].set_xlabel("$t$ [s]")
 ax[2, 1].set_xlabel("$t$ [s]")
