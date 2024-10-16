@@ -4,9 +4,8 @@
 #include <nlohmann/json.hpp>
 #include <string>
 
-#include "pmsm.h"       // PMSM class
-#include "simulators.h" // Simulators
-#include "timer.h"      // Timer class
+#include "pmsm.h"  // PMSM class
+#include "timer.h" // Timer class
 
 using namespace Eigen;
 using nljson = nlohmann::json;

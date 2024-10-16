@@ -13,10 +13,10 @@ find_package(nlohmann_json REQUIRED)
 find_package(Eigen3 REQUIRED)
 
 # Include directories for header files
-include_directories(pmsm_simulation PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
+include_directories(pmsm_simulation PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # Add the executable target
-add_executable(pmsm_simulation main.cc)
+add_executable(pmsm_simulation main.cc ${CMAKE_CURRENT_SOURCE_DIR}/src/pmsm.cc)
 
 # Link the required libraries to the target
 target_link_libraries(pmsm_simulation PRIVATE nlohmann_json::nlohmann_json Eigen3::Eigen)
