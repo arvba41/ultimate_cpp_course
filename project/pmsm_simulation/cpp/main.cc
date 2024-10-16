@@ -11,6 +11,13 @@
 using namespace Eigen;
 using nljson = nlohmann::json;
 
+// Does not work with g++ compiler for some reason
+static int n_allocations = 0;
+void *operator new(size_t size) {
+  ++n_allocations;
+  return malloc(size);
+}
+
 /* ---------------------------------------------------- */
 /* Function to reate a json file */
 /* ---------------------------------------------------- */
@@ -79,6 +86,9 @@ int main() {
   }
   create_jsonfile("pmsm_simulation", json_obj);
   /* ---------------------------------------------------- */
+
+  // Print the number of allocations
+  std::cout << "Number of allocations: " << n_allocations << std::endl;
 
   /* exit */
   return 0;

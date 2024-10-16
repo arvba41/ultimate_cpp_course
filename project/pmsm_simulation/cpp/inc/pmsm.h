@@ -21,6 +21,7 @@ public:
   VectorXd t; // time vector
   MatrixXd x; // state vector (3xN), x[0] -> id, x[1] -> iq, x[2] -> omega
   MatrixXd u; // input vector (3xN), u[0] -> vd, u[1] -> vq, u[2] -> Tl
+  MatrixXd xdot = MatrixXd::Zero(3, 1); // state derivatives
 
   // public methods
   MatrixXd fx(const MatrixXd &x, const MatrixXd &u); // State equations
@@ -61,7 +62,7 @@ MatrixXd PMSM::fx(const MatrixXd &x, const MatrixXd &u) { // State equations
                       Tl); // mechanical speed update
 
   // return the state derivatives
-  MatrixXd xdot(3, 1);
+  // xdot(3, 1);
   xdot << id_dot, iq_dot, omega_dot;
 
   return xdot;
@@ -76,7 +77,7 @@ void PMSM::simulate(const VectorXd &x0) { // simulate the PMSM<
   x = MatrixXd::Zero(3, t.size());
   x.col(0) = x0;
 
-  RungeKutta4(t, x, u, *this);
+  RungeKutta4<PMSM>(t, x, u, *this);
 }
 
 void PMSM::set_inputs(const int &input_idx, const double &val,
