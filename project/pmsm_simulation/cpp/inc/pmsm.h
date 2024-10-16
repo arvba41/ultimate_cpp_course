@@ -9,12 +9,13 @@ using namespace Eigen;
 
 /* PMSM class */
 class PMSM {
+
 public:
   double Ld;    // d-axis inductance
   double Lq;    // q-axis inductance
   double Rs;    // stator resistance
   double psi_r; // rotor flux
-  double np;    // pole pairs
+  int np;       // pole pairs
   double J;     // inertia
 
   // vectors
@@ -22,6 +23,17 @@ public:
   MatrixXd x; // state vector (3xN), x[0] -> id, x[1] -> iq, x[2] -> omega
   MatrixXd u; // input vector (3xN), u[0] -> vd, u[1] -> vq, u[2] -> Tl
   MatrixXd xdot = MatrixXd::Zero(3, 1); // state derivatives
+
+  // constructor
+  PMSM(const double &Ld, const double &Lq, const double &Rs,
+       const double &psi_r, const int &np, const double &J) {
+    this->Ld = Ld;
+    this->Lq = Lq;
+    this->Rs = Rs;
+    this->psi_r = psi_r;
+    this->np = np;
+    this->J = J;
+  }
 
   // public methods
   MatrixXd fx(const MatrixXd &x, const MatrixXd &u); // State equations

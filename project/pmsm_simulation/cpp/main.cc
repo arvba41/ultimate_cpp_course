@@ -38,14 +38,13 @@ void create_jsonfile(std::string filename, const nljson &json_obj) {
 /*! Main function */
 int main() {
 
-  PMSM pmsm; // create an instance of the PMSM class
   // set the parameters
-  pmsm.Ld = 2.85E-3;   // d-axis inductance
-  pmsm.Lq = 2.85E-3;   // q-axis inductance
-  pmsm.Rs = 0.054;     // stator resistance
-  pmsm.psi_r = 0.8603; // rotor flux
-  pmsm.np = 3;         // pole pairs
-  pmsm.J = 0.25;       // inertia
+  double Ld = 2.85E-3;   // d-axis inductance
+  double Lq = 2.85E-3;   // q-axis inductance
+  double Rs = 0.054;     // stator resistance
+  double psi_r = 0.8603; // rotor flux
+  int np = 3;            // pole pairs
+  double J = 0.25;       // inertia
 
   const double Vd_pk = 100; // peak value of the d-axis voltage
   const double tset = 0.1;  // time to set the input
@@ -56,6 +55,8 @@ int main() {
   /* ---------------------------------------------------- */
   /*! simulation */
   /* ---------------------------------------------------- */
+  PMSM pmsm(Ld, Lq, Rs, psi_r, np, J); // create PMSM object
+
   pmsm.set_time(tstart, tend, dt); // set time vector
   pmsm.set_inputs(1, Vd_pk, tset); // set input vector
   VectorXd x0 = VectorXd::Zero(3); // initial state vector
