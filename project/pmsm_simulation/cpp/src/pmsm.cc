@@ -26,8 +26,6 @@ MatrixXd PMSM::fx(const MatrixXd &x, const MatrixXd &u) { // State equations
                      (3 * np / 2 * (psi_r * iq + (Ld - Lq) * id * iq) -
                       Tl); // mechanical speed update
 
-  // return the state derivatives
-  // xdot(3, 1);
   xdot << id_dot, iq_dot, omega_dot;
 
   return xdot;
