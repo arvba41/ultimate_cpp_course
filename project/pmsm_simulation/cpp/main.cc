@@ -1,11 +1,13 @@
 #include <eigen3/Eigen/Dense>
+#include <fmt/core.h>
 #include <fstream>
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <string>
 
-#include "pmsm.h"  // PMSM class
-#include "timer.h" // Timer class
+// #include "pmsm.h"  // PMSM class
+#include "simulators.h" // Fixed-step simulators
+#include "timer.h"      // Timer class
 
 using namespace Eigen;
 using nljson = nlohmann::json;
@@ -35,61 +37,65 @@ void create_jsonfile(std::string filename, const nljson &json_obj) {
 }
 /* ---------------------------------------------------- */
 
+/* ---------------------------------------------------- */
+/* PMSM as a struct */
+/* ---------------------------------------------------- */
+struct PMSM : public FixedStepSimulators::SimulationModel {
+  PMSM() : FixedStepSimulators::SimulationModel(3) {}
+  void operator()(double t, const Vector3d &x, Vector3d &xdot) const override {
+    double vd = 0;
+    double vq = (t > 0.1) ? 100.0 : 0.0;
+    double Tl = 0;
+
+    double id = x(0);
+    double iq = x(1);
+    double omega = x(2);
+
+    xdot(0) = 1 / Ld * (vd - Rs * id + np * omega * Lq * iq);
+    xdot(1) = 1 / Lq * (vq - Rs * iq - np * omega * (Ld * id + psi_r));
+    xdot(2) = 1 / J * (3 * np / 2 * (psi_r * iq + (Ld - Lq) * id * iq) - Tl);
+  }
+  double Ld{2.85E-3};   // d-axis inductance
+  double Lq{2.85E-3};   // q-axis inductance
+  double Rs{0.054};     // stator resistance
+  double psi_r{0.8603}; // rotor flux
+  double np{3};         // pole pairs
+  double J{0.25};       // inertia
+};
+
 /*! Main function */
 int main() {
 
-  // set the parameters
-  double Ld = 2.85E-3;   // d-axis inductance
-  double Lq = 2.85E-3;   // q-axis inductance
-  double Rs = 0.054;     // stator resistance
-  double psi_r = 0.8603; // rotor flux
-  int np = 3;            // pole pairs
-  double J = 0.25;       // inertia
+  // user defined parameters
+  double t0 = 0.0;  // start time
+  double T = 1.0;   // end time
+  double dt = 1E-6; // time step
 
-  const double Vd_pk = 100; // peak value of the d-axis voltage
-  const double tset = 0.1;  // time to set the input
-  const double tstart = 0;  // simulation start time
-  const double tend = 1;    // simulation end time
-  const double dt = 1E-6;   // simulation time step
+  Vector3d x0;
+  x0 << 0.0, 0.0, 0.0; // initial state
 
-  /* ---------------------------------------------------- */
-  /*! simulation */
-  /* ---------------------------------------------------- */
-  PMSM pmsm(Ld, Lq, Rs, psi_r, np, J); // create PMSM object
+  // create PMSM object
+  const PMSM pmsm;
+  FixedStepSimulators::RungeKutta rk(pmsm);
 
-  pmsm.set_time(tstart, tend, dt); // set time vector
-  pmsm.set_inputs(1, Vd_pk, tset); // set input vector
-  Vector3d x0 = VectorXd::Zero(3); // initial state vector
+  Timer timer;
+  timer.tic();                             // start timer
+  auto [ts, xs] = rk.solve(t0, T, x0, dt); // simulate
+  timer.toc();                             // stop timer
 
-  Timer timer; // initialize timer
+  fmt::print("Simulated {} data points in {} ms\n", ts.size(), timer.elapsed());
 
-  timer.tic();   // start timer
-  timer.reset(); // start timer
-
-  pmsm.simulate(x0); // simulate the system
-
-  timer.toc(); // stop timer
-
-  std::cout << "Elapsed time: " << timer.elapsed() << " ms" << std::endl;
-  /* ---------------------------------------------------- */
-
-  /* ---------------------------------------------------- */
-  /*! saving as the data as json file */
-  /* ---------------------------------------------------- */
+  // create json object
   nljson json_obj;
-  json_obj["t"] = pmsm.t;
-  for (int ii = 0; ii < pmsm.u.rows(); ++ii) {
-    json_obj["U"][std::to_string(ii)] = pmsm.u.row(ii);
+  json_obj["t"] = ts;
+  for (size_t i = 0; i < pmsm.n; ++i) {
+    json_obj["x" + std::to_string(i)] = xs.row(i);
   }
-  for (int ii = 0; ii < pmsm.x.rows(); ++ii) {
-    json_obj["X"][std::to_string(ii)] = pmsm.x.row(ii);
-  }
-  create_jsonfile("pmsm_simulation", json_obj);
-  /* ---------------------------------------------------- */
+  // json_obj["x"] = xs;
 
-  // Print the number of allocations
-  std::cout << "Number of allocations: " << n_allocations << std::endl;
+  create_jsonfile("pmsm_sim_cpp", json_obj); // save to json file
 
-  /* exit */
+  fmt::print("Number of allocations: {}\n", n_allocations);
+
   return 0;
 }
