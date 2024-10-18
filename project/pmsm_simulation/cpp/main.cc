@@ -12,7 +12,9 @@
 using namespace Eigen;
 using nljson = nlohmann::json;
 
-// Does not work with g++ compiler for some reason
+// Raises a warning when using gcc compiler use clang instead. If you still want
+// to use gcc, you can suppress the warning by adding
+// -Wno-deprecated-declarations to the compiler flags.
 static int n_allocations = 0;
 void *operator new(size_t size) {
   ++n_allocations;

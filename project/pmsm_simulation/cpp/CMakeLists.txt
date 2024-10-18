@@ -4,10 +4,6 @@ cmake_minimum_required(VERSION 3.5.0)
 # Define the project name, version, and languages used
 project(PMSM_init VERSION 0.1.0 LANGUAGES C CXX)
 
-# Set the C and C++ compilers to Clang
-set(CMAKE_C_COMPILER clang)
-set(CMAKE_CXX_COMPILER clang++)
-set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Find the required packages
 find_package(nlohmann_json REQUIRED)
