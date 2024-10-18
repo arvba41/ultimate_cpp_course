@@ -22,7 +22,8 @@ public:
   VectorXd t; // time vector
   MatrixXd x; // state vector (3xN), x[0] -> id, x[1] -> iq, x[2] -> omega
   MatrixXd u; // input vector (3xN), u[0] -> vd, u[1] -> vq, u[2] -> Tl
-  MatrixXd xdot = MatrixXd::Zero(3, 1); // state derivatives
+  // MatrixXd xdot = MatrixXd::Zero(3, 1); // state derivatives
+  Matrix<double, 3, 1> xdot; // state derivatives
 
   // constructor
   PMSM(const double &Ld, const double &Lq, const double &Rs,
@@ -36,12 +37,13 @@ public:
   }
 
   // public methods
-  MatrixXd fx(const MatrixXd &x, const MatrixXd &u); // State equations
+  MatrixXd fx(const Matrix<double, 3, 1> &x,
+              const Matrix<double, 3, 1> &u); // State equations
 
   void set_time(const double &start, const double &end,
                 const double &delta); // set time vector
 
-  void simulate(const VectorXd &x0); // simulate the PMSM
+  void simulate(const Vector3d &x0); // simulate the PMSM
 
   void set_inputs(const int &input_idx, const double &val,
                   const double &t0); // set input vector

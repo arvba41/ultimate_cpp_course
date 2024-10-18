@@ -5,7 +5,8 @@
 using namespace Eigen;
 
 /* Electric macnine function definitions */
-MatrixXd PMSM::fx(const MatrixXd &x, const MatrixXd &u) { // State equations
+MatrixXd PMSM::fx(const Matrix<double, 3, 1> &x,
+                  const Matrix<double, 3, 1> &u) { // State equations
   // extract states
   double id = x(0);
   double iq = x(1);
@@ -36,7 +37,7 @@ void PMSM::set_time(const double &start, const double &end,
   t = VectorXd::LinSpaced((end - start) / delta, start, end);
 }
 
-void PMSM::simulate(const VectorXd &x0) { // simulate the PMSM<
+void PMSM::simulate(const Vector3d &x0) { // simulate the PMSM<
   x = MatrixXd::Zero(3, t.size());
   x.col(0) = x0;
 
