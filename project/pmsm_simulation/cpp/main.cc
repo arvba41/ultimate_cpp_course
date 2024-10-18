@@ -50,7 +50,7 @@ int main() {
   const double tset = 0.1;  // time to set the input
   const double tstart = 0;  // simulation start time
   const double tend = 1;    // simulation end time
-  const double dt = 10E-6;  // simulation time step
+  const double dt = 1E-6;   // simulation time step
 
   /* ---------------------------------------------------- */
   /*! simulation */

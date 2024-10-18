@@ -48,7 +48,7 @@ public:
 
 private:
   // variables
-  double t_now; // current time
+  // double t_now; // current time
 
   // private methods
   VectorXd UnitStep(const double &t0); // unit step function
