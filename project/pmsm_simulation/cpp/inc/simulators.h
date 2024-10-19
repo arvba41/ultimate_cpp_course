@@ -13,8 +13,8 @@ class SimulationModel {
 public:
   SimulationModel() = default;
   explicit SimulationModel(size_t n_in) : n(n_in) {}
-  virtual void operator()(double t, const Vector3d &x,
-                          Vector3d &xdot) const = 0;
+  virtual void operator()(double t, const VectorXd &x,
+                          VectorXd &xdot) const = 0;
   size_t n{0};
 };
 
@@ -43,7 +43,7 @@ public:
     x += dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
   }
 
-  auto solve(const double &t0, const double &T, const Vector3d &x0, double &dt)
+  auto solve(const double &t0, const double &T, const VectorXd &x0, double &dt)
       -> std::pair<VectorXd, MatrixXd> {
 
     size_t N = std::ceil((T - t0) / dt) + 1;
@@ -69,16 +69,16 @@ public:
   }
 
 private:
-  Vector3d x;
+  VectorXd x;
   double t{0.0};
 
   const SimulationModel &model;
 
-  Vector3d k1;
-  Vector3d k2;
-  Vector3d k3;
-  Vector3d k4;
-  Vector3d tmp;
+  VectorXd k1;
+  VectorXd k2;
+  VectorXd k3;
+  VectorXd k4;
+  VectorXd tmp;
 };
 
 } // namespace FixedStepSimulators
