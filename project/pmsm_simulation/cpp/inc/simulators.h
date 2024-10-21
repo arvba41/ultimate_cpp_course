@@ -25,7 +25,7 @@ public:
       : x(model.n), model(model), k1(model.n), k2(model.n), k3(model.n),
         k4(model.n), tmp(model.n) {}
 
-  void step(double dt) {
+  void step(const double &dt) {
     // ugly but avoids allocations
     // model(t, x, k1);
     // tmp = x + 0.5 * dt * k1;

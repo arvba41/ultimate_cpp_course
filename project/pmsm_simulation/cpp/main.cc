@@ -55,8 +55,16 @@ struct PMSM : public FixedStepSimulators::SimulationModel {
     double omega = x(2);
 
     // controller
-    double vd, vq;
-    controller(t, x, xdot, vd, vq);
+    static double vd, vq;
+    static int ncount = 0;
+    if (t > (ncount * Tc)) {
+      controller(t, x, xdot, vd, vq);
+      ncount++;
+    } else {
+      xdot(3) = 0.0;
+      xdot(4) = 0.0;
+      xdot(5) = 0.0;
+    }
 
     // state update
     xdot(0) = 1 / Ld * (vd - Rs * id + np * omega * Lq * iq);
@@ -77,8 +85,10 @@ struct PMSM : public FixedStepSimulators::SimulationModel {
   double Vbase{12.0}; // base voltage
   double Ibase{2.0};  // base current
 
+  // controller sample time and simulator sample time
+  double Tc{2E-4}; // current controller time constant
+
   // controller parameters
-  // double Tcrl{10E-3};               // current controller time constant
   double tri_c{1E-3};                       // current controller time constant
   double alpha_c = std::log(9) / tri_c;     // closed-loop bandwidth
   double Kpd = Ld * alpha_c;                // d-axis proportional gain
@@ -132,9 +142,9 @@ struct PMSM : public FixedStepSimulators::SimulationModel {
     vq = vqref * sat_fcn;
 
     // controller integrator update
-    xdot(3) = (idref - id) + (1 / Kpd) * (vd - vdref);
-    xdot(4) = (iqref - iq) + (1 / Kpq) * (vq - vqref);
-    xdot(5) = (omega_ref - omega) + (1 / Kps) * (iqref - iqref_);
+    xdot(3) = ((idref - id) + (1 / Kpd) * (vd - vdref)) / 1e-6 * Tc;
+    xdot(4) = ((iqref - iq) + (1 / Kpq) * (vq - vqref)) / 1e-6 * Tc;
+    xdot(5) = ((omega_ref - omega) + (1 / Kps) * (iqref - iqref_)) / 1e-6 * Tc;
   }
 };
 
