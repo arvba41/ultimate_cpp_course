@@ -1,6 +1,15 @@
 # Created by https://www.toptal.com/developers/gitignore/api/visualstudiocode,cmake,linux,latex,macos,windows,c++,matlab,julia
 # Edit at https://www.toptal.com/developers/gitignore?templates=visualstudiocode,cmake,linux,latex,macos,windows,c++,matlab,julia
 
+### ignore build files ###
+build
+bin
+lib
+out
+
+## ignore environment files ###
+env 
+
 ### Ignore .json files ###
 *.json
 

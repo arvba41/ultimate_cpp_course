@@ -1,182 +1,206 @@
-# %%
-# include necessary libraries
+# %% %matplotlib
+from numba import njit
+import pandas as pd
+import json
 import numpy as np
 import matplotlib.pyplot as plt
-import json
+from seaborn import despine
 
 import time
 
-# # %%
-# # load the data
-# with open("../results/pmsm_simulation.json", "r") as file:
-#     data = json.load(file)
+# plt.rcParams["lines.linewidth"] = 0.75
 
-# # %%
-# # extract the data
-# t = np.array(data["t"])  # time
 
-# u = {}  # input
-# for uu in data["U"]:
-#     u[uu] = np.array(data["U"][uu])
+# %% v
+# function definitions for the PMSM model
 
-# x = {}  # state
-# for xx in data["X"]:
-#     x[xx] = np.array(data["X"][xx])
+
+# motor parameters
+R_s = 0.56
+L_d = 375e-6
+L_q = 435e-6
+psi_r = 0.0143
+n_p = 2
+J = 0.12e-4
+b = 10e-6
+
+# controller parameters
+tri_c = 1e-3
+alpha_c = np.log(9) / tri_c
+Kpd = alpha_c * L_d
+Kpq = alpha_c * L_q
+Kid = alpha_c**2 * L_d
+Kiq = alpha_c**2 * L_q
+Rad = alpha_c * L_d - R_s
+Raq = alpha_c * L_q - R_s
+tri_s = 1e-2
+alpha_s = np.log(9) / tri_s
+psi = 3 * n_p * psi_r / 2
+Kps = J * alpha_s / psi
+Kis = J * alpha_s**2 / psi
+Ba = (alpha_s * J - b) / psi
+
+# controller sample time
+Tctrl = 2e-4
+
+# saturation parameters
+Ibase = 2
+Vbase = 12
+
+v_d_prev = 0
+v_q_prev = 0
+
+
+# @njit
+def pmsm_model(t, x):
+    # R_s = 0.054
+    # L_d = 2.85e-3
+    # L_q = 2.85e-3
+    # psi_r = 0.8603
+    # n_p = 3
+    # J = 0.25
+    # b = 0.0
+
+    T_l = 0 if t < 0.5 else 0.08
+
+    i_d, i_q, w, _, _, _ = x
+
+    # global v_d_prev, v_q_prev
+    # if t % Tctrl < 1e-6:
+    #     v_d, v_q, dI_ddt, dI_qdt, dI_sdt = controller(t, x)
+    #     v_d_prev, v_q_prev = v_d, v_q
+    # else:
+    #     v_d, v_q = v_d_prev, v_q_prev
+    #     dI_ddt, dI_qdt, dI_sdt = 0, 0, 0
+
+    v_d, v_q, dI_ddt, dI_qdt, dI_sdt = controller(t, x)
+
+    ## state update
+    did_dt = 1 / L_d * (v_d - R_s * i_d + n_p * w * L_q * i_q)
+    diq_dt = 1 / L_q * (v_q - R_s * i_q - n_p * w * (L_d * i_d + psi_r))
+    dw_dt = (
+        1 / J * (3 * n_p / 2 * (psi_r * i_q + (L_d - L_q) * i_d * i_q) - T_l - b * w)
+    )
+
+    return np.array([did_dt, diq_dt, dw_dt, dI_ddt, dI_qdt, dI_sdt])
+
+
+# @njit
+def controller(t, x):
+
+    i_d, i_q, w, I_d, I_q, I_s = x
+
+    w_ref = 0 if t < 0.1 else 4000 * 2 * np.pi / 60
+
+    i_d_ref = 0
+    i_q_ref = (w_ref - w) * Kps + I_s * Kis - Ba * w
+
+    # i_q_ref = np.clip(i_q_ref, -Ibase, Ibase)
+    i_q_ref = i_q_ref if abs(i_q_ref) < Ibase else np.sign(i_q_ref) * Ibase
+
+    v_d_ref = (i_d_ref - i_d) * Kpd + I_d * Kid - Rad * i_d - n_p * w * L_q * i_q
+    v_q_ref = (
+        (i_q_ref - i_q) * Kpq + I_q * Kiq - Raq * i_q + n_p * w * (L_d * i_d + psi_r)
+    )
+
+    vdq = np.sqrt(v_d_ref**2 + v_q_ref**2)
+    v_d = v_d_ref if vdq < Vbase else v_d_ref / vdq * Vbase
+    v_q = v_q_ref if vdq < Vbase else v_q_ref / vdq * Vbase
+
+    dI_ddt = ((i_d_ref - i_d) + (1 / Kpd) * (v_d - v_d_ref)) / 1e-6 * Tctrl
+    dI_qdt = ((i_q_ref - i_q) + (1 / Kpq) * (v_q - v_q_ref)) / 1e-6 * Tctrl
+    dI_sdt = ((w_ref - w) + (1 / Kps) * (i_q_ref - i_q)) / 1e-6 * Tctrl
+
+    return np.array([v_d, v_q, dI_ddt, dI_qdt, dI_sdt])
+
+
+# %% Fixed step RK
+x0 = np.array([0, 0, 0, 0, 0, 0])
+t = np.arange(0, 1 + 1e-6, 1e-6)
+
+
+# @njit
+def fixed_step_rk4(f, x0, t):
+    N = len(t)
+    n = len(x0)
+    x = np.zeros((n, N))
+    x[:, 0] = x0
+    for i in range(1, N):
+        h = t[i] - t[i - 1]
+        k1 = f(t[i - 1], x[:, i - 1])
+        k2 = f(t[i - 1] + h / 2, x[:, i - 1] + h / 2 * k1)
+        k3 = f(t[i - 1] + h / 2, x[:, i - 1] + h / 2 * k2)
+        k4 = f(t[i - 1] + h, x[:, i - 1] + h * k3)
+        x[:, i] = x[:, i - 1] + h / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
+    return x
+
 
 # %%
-# Simulating the PMSM model in python
+# simulation
+tstart = time.time()
+x_fs = fixed_step_rk4(pmsm_model, x0, t)  # 13 s / 358 ms
+tend = time.time()
+print(f"Fixed step RK4 simulation time: {tend - tstart:.3f} s")
 
+# %%
+# plotting the results
+fig, ax = plt.subplots(3, 1, num=20, clear=True, layout="constrained", sharex=True)
 
-class RungeKutta4:
-    def __init__(self, f):
-        self.f = f
+ax[0].plot(t, x_fs[0])
+ax[0].set_ylabel(r"$i_d$ [A]")
+# ax[0].set_xlabel("Time [s]")
+despine(ax=ax[0])
 
-    def simulate(self, t, x, u):
+ax[1].plot(t, x_fs[1])
+ax[1].set_ylabel(r"$i_q$ [A]")
+# ax[1].set_xlabel("Time [s]")
+despine(ax=ax[1])
 
-        for i in range(1, len(t)):
-            dt = t[i] - t[i - 1]
-            k1 = self.f(x[:, i - 1], u[:, i - 1])
-            k2 = self.f(x[:, i - 1] + 0.5 * dt * k1, u[:, i - 1])
-            k3 = self.f(x[:, i - 1] + 0.5 * dt * k2, u[:, i - 1])
-            k4 = self.f(x[:, i - 1] + dt * k3, u[:, i - 1])
+ax[2].plot(t, x_fs[2] * 60 / (2 * np.pi))
+ax[2].set_ylabel(r"$w$ [rpm]")
+ax[2].set_xlabel("Time [s]")
+despine(ax=ax[2])
 
-            x[:, i] = x[:, i - 1] + (dt / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
+fig.suptitle("Python fixed step RK4")
+fig.align_ylabels(ax)
 
-        return x
+# plotting the internal variables
+fig, ax = plt.subplots(3, 1, num=21, clear=True, layout="constrained", sharex=True)
 
+ax[0].plot(t, x_fs[3])
+ax[0].set_ylabel(r"$I_d$ [A]")
+# ax[0].set_xlabel("Time [s]")
+despine(ax=ax[0])
 
-class PMSM:
-    def __init__(self, Ld, Lq, Rs, psi_r, J, np):
-        self.Ld = Ld
-        self.Lq = Lq
-        self.Rs = Rs
-        self.psi_r = psi_r
-        self.J = J
-        self.np = np
+ax[1].plot(t, x_fs[4])
+ax[1].set_ylabel(r"$I_q$ [A]")
+# ax[1].set_xlabel("Time [s]")
+despine(ax=ax[1])
 
-    def set_time(self, start, end, delta):
-        self.t = np.arange(start, end, delta)
+ax[2].plot(t, x_fs[5])
+ax[2].set_ylabel(r"$I_s$ [A]")
+ax[2].set_xlabel("Time [s]")
+despine(ax=ax[2])
 
-    def set_inputs(self, input_idx, val, t0):
-        id = np.zeros_like(self.t)
-        iq = np.zeros_like(self.t)
-        Tl = np.zeros_like(self.t)
-
-        if input_idx == 0:
-            id[self.t > t0] = val
-        elif input_idx == 1:
-            iq[self.t > t0] = val
-        elif input_idx == 2:
-            Tl[self.t > t0] = val
-
-        self.u = np.array([id, iq, Tl])
-
-    def fx(self, x, u):
-        # extract the states and inputs
-        id, iq, omega = x  # states
-        vd, vq, Tl = u  # inputs
-
-        # calculate the currents and speed
-        id_dot = (1 / self.Ld) * (vd - self.Rs * id + self.np * omega * self.Lq * iq)
-        iq_dot = (1 / self.Lq) * (
-            vq - self.Rs * iq - self.np * omega * (self.Ld * id + self.psi_r)
-        )
-        omega_dot = (1 / self.J) * (
-            3 * self.np / 2 * (self.psi_r * iq - (self.Ld - self.Lq) * id * iq) - Tl
-        )
-
-        xdot = np.array([id_dot, iq_dot, omega_dot])
-        return xdot
-
-    def simulate(self, x0):
-        # initialize the states
-        self.x = np.zeros((len(x0), len(self.t)))
-        self.x[:, 0] = x0
-
-        # simulate the model
-        self.integrator = RungeKutta4(self.fx)
-        self.integrator.simulate(self.t, self.x, self.u)
+fig.suptitle("Python fixed step RK4 internal variables")
+fig.align_ylabels(ax)
 
 
 # %%
-# pmsm simulation in python
-pmsm = PMSM(Ld=2.85e-3, Lq=2.85e-3, Rs=0.054, psi_r=0.8603, J=0.25, np=3)
+# simulating in the loop
 
-Vq_pk = 100
-tset = 0.1
-tstart = 0
-tend = 1
-dt = 10e-6
+Nsim = 100
+tsim_time = []
+for i in range(Nsim):
+    tstart = time.time()
+    x_fs = fixed_step_rk4(pmsm_model, x0, t)  # 13 s / 358 ms
+    tend = time.time()
+    tsim_time.append(tend - tstart)
 
-pmsm.set_time(tstart, tend, dt)
-pmsm.set_inputs(1, Vq_pk, tset)
-x0 = np.array([0, 0, 0])
+print(
+    f"{Nsim} simulations with {np.mean(tsim_time) * 1e3:.2f} ± {np.std(tsim_time) * 1e3:.2f} ms each"
+)
 
-tsim_start = time.time()
-pmsm.simulate(x0)
-tsim_end = time.time()
-
-print("*" * 50)
-print(f"Simulation time: {tsim_end - tsim_start:.2f} s")
-print("*" * 50)
-
+print(f"first simulation: {tsim_time[0]:.2f} s")
 # %%
-# save the simulation results
-data = {
-    "t": pmsm.t,
-    "u": pmsm.u,
-    "x": pmsm.x,
-}
-
-with open("python_results.npy", "wb") as file:
-    np.save(file, data)
-
-# copy the results to the matlab folder
-import shutil
-
-shutil.copy("python_results.npy", "../results/python_results.npy")
-
-# # %%
-# # loading the simulation results from matlab
-# with open("matlab_results.json", "r") as file:
-#     data_matlab = json.load(file)
-
-# t_matlab = np.array(data_matlab["t"])  # time
-# u_matlab = np.array(data_matlab["u"])  # input
-# x_matlab = np.array(data_matlab["x"])  # state
-
-# # %%
-# # plot the simulation results
-
-# fig, ax = plt.subplots(
-#     3, 2, clear=True, num="Simulation Results", layout="constrained", sharex=True
-# )
-
-# unames = ["$v_d$", "$v_q$", "$T_l$"]
-# xnames = ["$i_d$", "$i_q$", "$\\omega$"]
-
-# for ii, (uu, xx) in enumerate(zip(u, x)):
-#     ax[ii, 0].plot(t, u[uu])
-#     ax[ii, 0].set_ylabel(unames[ii])
-#     ax[ii, 0].grid(True)
-#     # ax[ii, 0].legend()
-
-#     ax[ii, 1].plot(t, x[xx])
-#     ax[ii, 1].set_ylabel(xnames[ii])
-#     ax[ii, 1].grid(True)
-#     # ax[ii, 1].legend()
-
-# for ii, (uu, xx) in enumerate(zip(pmsm.u, pmsm.x)):
-#     ax[ii, 0].plot(pmsm.t, uu, linestyle="--")
-#     ax[ii, 1].plot(pmsm.t, xx, linestyle="--")
-
-# for ii, (uu, xx) in enumerate(zip(u_matlab, x_matlab)):
-#     ax[ii, 0].plot(t_matlab, uu, linestyle=":")
-#     ax[ii, 1].plot(t_matlab, xx, linestyle=":")
-
-# ax[2, 0].set_xlabel("$t$ [s]")
-# ax[2, 1].set_xlabel("$t$ [s]")
-# fig.align_ylabels()
-
-# # %%
-# plt.show()
+plt.show()
