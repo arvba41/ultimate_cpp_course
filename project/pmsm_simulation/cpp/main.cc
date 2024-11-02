@@ -48,16 +48,19 @@ int main() {
   double T = 1.0;   // end time
   double dt = 1E-6; // time step
 
-  VectorXd x0 = VectorXd::Zero(6); // initial state
+  VectorXd x0 = VectorXd::Zero(3); // initial state
 
   // create PMSM object
   const PMSM pmsm;
   FixedStepSimulators::RungeKutta rk(pmsm);
 
+  VectorXd ts;
+  MatrixXd xs;
+
   Timer timer;
-  timer.tic();                             // start timer
-  auto [ts, xs] = rk.solve(t0, T, x0, dt); // simulate
-  timer.toc();                             // stop timer
+  timer.tic();                                // start timer
+  std::tie(ts, xs) = rk.solve(t0, T, x0, dt); // simulate
+  timer.toc();                                // stop timer
 
   fmt::print("Simulated {} data points in {} ms\n", ts.size(), timer.elapsed());
 

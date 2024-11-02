@@ -1,0 +1,8 @@
+ipython
+numpy
+matplotlib
+jupyterlab
+seaborn
+black
+scipy
+casadi
